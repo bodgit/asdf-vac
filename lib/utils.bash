@@ -2,7 +2,6 @@
 
 set -euo pipefail
 
-# TODO: Ensure this is the correct GitHub homepage where releases can be downloaded for vac.
 GH_REPO="https://github.com/mvisonneau/vac"
 TOOL_NAME="vac"
 TOOL_TEST="vac --help"
@@ -31,18 +30,43 @@ list_github_tags() {
 }
 
 list_all_versions() {
-	# TODO: Adapt this. By default we simply list the tag names from GitHub releases.
-	# Change this function if vac has other means of determining installable versions.
 	list_github_tags
 }
 
+get_machine_os() {
+	local OS
+	OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+
+	case "${OS}" in
+	darwin*) echo "darwin" ;;
+	linux*) echo "linux" ;;
+	*) fail "OS not supported: ${OS}" ;;
+	esac
+}
+
+get_machine_arch() {
+	local ARCH
+	ARCH=$(uname -m | tr '[:upper:]' '[:lower:]')
+
+	case "${ARCH}" in
+	i?86) echo "386" ;;
+	x86_64) echo "amd64" ;;
+	aarch64) echo "arm64" ;;
+	armv81) echo "arm64" ;;
+	arm64) echo "arm64" ;;
+	*) fail "Architecture not supported: $ARCH" ;;
+	esac
+}
+
 download_release() {
-	local version filename url
+	local version filename url os arch
 	version="$1"
 	filename="$2"
 
-	# TODO: Adapt the release URL convention for vac
-	url="$GH_REPO/archive/v${version}.tar.gz"
+	os=$(get_machine_os)
+	arch=$(get_machine_arch)
+
+	url="$GH_REPO/releases/download/v${version}/${TOOL_NAME}_v${version}_${os}_${arch}.tar.gz"
 
 	echo "* Downloading $TOOL_NAME release $version..."
 	curl "${curl_opts[@]}" -o "$filename" -C - "$url" || fail "Could not download $url"
@@ -61,7 +85,6 @@ install_version() {
 		mkdir -p "$install_path"
 		cp -r "$ASDF_DOWNLOAD_PATH"/* "$install_path"
 
-		# TODO: Assert vac executable exists.
 		local tool_cmd
 		tool_cmd="$(echo "$TOOL_TEST" | cut -d' ' -f1)"
 		test -x "$install_path/$tool_cmd" || fail "Expected $install_path/$tool_cmd to be executable."
